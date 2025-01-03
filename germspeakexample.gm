@@ -1,0 +1,9 @@
+germ addtwo(int arg1, int arg2){
+  return arg1 + arg2;
+}
+
+int my_var = 20;
+int my_speck = 20;
+
+printf(addtwo(my_var));
+
