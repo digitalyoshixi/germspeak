@@ -10,7 +10,7 @@ char **parser(){
 }
 
 int main(int argc, char *argv[]){
-	std::cout << argv[1]; // this should be the filename like 'germspeakexample.gm'
+	std::cout << argv[1] << std::endl; // this should be the filename like 'germspeakexample.gm'
 	// read the file contents
   std::ifstream file(argv[1]);
   std::string line;
