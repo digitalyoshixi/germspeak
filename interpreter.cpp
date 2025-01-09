@@ -10,13 +10,14 @@ char **parser(){
 }
 
 int main(int argc, char *argv[]){
-	std::cout << argv[1] << std::endl; // this should be the filename like 'germspeakexample.gm'
-	// read the file contents
-  std::ifstream file(argv[1]);
-  std::string line;
-
-  while (std::getline(file, line)) {
-    std::cout << line << std::endl;
+  
+  if (argc >= 2){
+    std::ifstream ifs(argv[1]);
+    std::string content( (std::istreambuf_iterator<char>(ifs) ),
+                         (std::istreambuf_iterator<char>()    ) );
+  }
+  else {
+    std::cout << "give filename";
   }
   return 0;
 }
