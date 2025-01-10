@@ -6,6 +6,7 @@ using namespace std;
 
 enum TokenType{
   NumberLiteral,
+  Keyword,
   Identifier,
   Equal,
   Plus,
@@ -113,9 +114,40 @@ vector<Token> tokenizer(string filecontent){
         pos++; // increase the iterator
       }
       // check if reserved keyword
-      TokenType currenttokentype = Identifier;
-      struct Token currenttoken = {currenttokentype,strliteral};
-      returnvec.push_back(currenttoken);
+      if (strliteral.compare("int") == 0){
+        TokenType currenttokentype = Keyword;
+        struct Token currenttoken = {currenttokentype,strliteral};
+        returnvec.push_back(currenttoken);
+      }
+      else if(strliteral.compare("germ") == 0){
+        TokenType currenttokentype = Keyword;
+        struct Token currenttoken = {currenttokentype,strliteral};
+        returnvec.push_back(currenttoken);
+
+      }
+      else if(strliteral.compare("printf") == 0){
+        TokenType currenttokentype = Keyword;
+        struct Token currenttoken = {currenttokentype,strliteral};
+        returnvec.push_back(currenttoken);
+
+      }
+      else if(strliteral.compare("return")== 0){
+        TokenType currenttokentype = Keyword;
+        struct Token currenttoken = {currenttokentype,strliteral};
+        returnvec.push_back(currenttoken);
+
+      }
+      else if(strliteral.compare("char")== 0){
+        TokenType currenttokentype = Keyword;
+        struct Token currenttoken = {currenttokentype,strliteral};
+        returnvec.push_back(currenttoken);
+
+      }
+      else{
+        TokenType currenttokentype = Identifier;
+        struct Token currenttoken = {currenttokentype,strliteral};
+        returnvec.push_back(currenttoken);
+      }
       //cout << "String Literal IS : " << strliteral << endl;
       // construct the word from before whitespace
     }
