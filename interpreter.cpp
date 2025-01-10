@@ -14,6 +14,8 @@ enum TokenType{
   Slash,
   LeftParen,
   RightParen,
+  Comma,
+  SemiColon,
 };
 
 struct Token{
@@ -29,54 +31,66 @@ vector<Token> tokenizer(string filecontent){
   while (pos < filecontent.size()){
 
     char currentchar = filecontent[pos];
-    cout << "POS: " << pos << " char : " << currentchar << endl;
+    //cout << "POS: " << pos << " char : " << currentchar << endl;
     // checking if it is a one-word char
     if (currentchar == '='){
-      cout << currentchar << endl;
+      //cout << currentchar << endl;
       TokenType currenttokentype = Equal;
       struct Token currenttoken = {currenttokentype,"="};
       returnvec.push_back(currenttoken);
     }
     else if (currentchar == '('){
-      cout << currentchar << endl;
+      //cout << currentchar << endl;
       TokenType currenttokentype = LeftParen;
       struct Token currenttoken = {currenttokentype,"("};
       returnvec.push_back(currenttoken);
     }
     else if (currentchar == ')'){
-      cout << currentchar << endl;
+      //cout << currentchar << endl;
       TokenType currenttokentype = RightParen;
       struct Token currenttoken = {currenttokentype,")"};
       returnvec.push_back(currenttoken);
     }
     else if (currentchar == '+'){
-      cout << currentchar << endl;
+      //cout << currentchar << endl;
       TokenType currenttokentype = Plus;
       struct Token currenttoken = {currenttokentype,"+"};
       returnvec.push_back(currenttoken);
     }
     else if (currentchar == '-'){
-      cout << currentchar << endl;
+      //cout << currentchar << endl;
       TokenType currenttokentype = Minus;
       struct Token currenttoken = {currenttokentype,"-"};
       returnvec.push_back(currenttoken);
     }
     else if (currentchar == '*'){
-      cout << currentchar << endl;
+      //cout << currentchar << endl;
       TokenType currenttokentype = Minus;
       struct Token currenttoken = {currenttokentype,"*"};
       returnvec.push_back(currenttoken);
     }
     else if (currentchar == '/'){
-      cout << currentchar << endl;
+      //cout << currentchar << endl;
       TokenType currenttokentype = Minus;
       struct Token currenttoken = {currenttokentype,"/"};
+      returnvec.push_back(currenttoken);
+    }
+    else if (currentchar == ','){
+      //cout << currentchar << endl;
+      TokenType currenttokentype = Comma;
+      struct Token currenttoken = {currenttokentype,","};
+      returnvec.push_back(currenttoken);
+    }
+    else if (currentchar == ';'){
+      //cout << currentchar << endl;
+      TokenType currenttokentype = SemiColon;
+      struct Token currenttoken = {currenttokentype,";"};
       returnvec.push_back(currenttoken);
     }
     // checking numeric literals
     else if (48 <= (int)currentchar && (int)currentchar <= 57){
       // check next char
-      cout << currentchar << endl;
+      //cout << currentchar << endl;
       TokenType currenttokentype = NumberLiteral;
       string numliteral = "";
       numliteral += currentchar;
@@ -86,10 +100,24 @@ vector<Token> tokenizer(string filecontent){
         numliteral += currentchar;
         currentchar = filecontent[++pos]; // get the next character
       }
-      cout << "NUMBER IS : " << numliteral << endl;
-
+      //cout << "NUMBER IS : " << numliteral << endl;
       struct Token currenttoken = {currenttokentype,numliteral};
       returnvec.push_back(currenttoken);
+    }
+    // checking words. see if its in a-zA-Z
+    else if ((97 <= (int)currentchar && (int)currentchar <= 122) || (65 <= (int)currentchar && (int)currentchar <= 90)){
+      string strliteral = "";
+      strliteral += filecontent[pos];
+      while (filecontent[pos+1] != ' ' && filecontent[pos+1] != '\t' && filecontent[pos+1] != '\n' && filecontent[pos+1] != ';' && filecontent[pos+1] != ')' && filecontent[pos+1] != '(' && filecontent[pos+1] != ','){
+        strliteral += filecontent[pos+1]; // add the next character
+        pos++; // increase the iterator
+      }
+      // check if reserved keyword
+      TokenType currenttokentype = Identifier;
+      struct Token currenttoken = {currenttokentype,strliteral};
+      returnvec.push_back(currenttoken);
+      //cout << "String Literal IS : " << strliteral << endl;
+      // construct the word from before whitespace
     }
     // increment the file pointer position
     pos++;
@@ -98,7 +126,8 @@ vector<Token> tokenizer(string filecontent){
 
 }
 
-char **parser(){
+char parser(){
+  return 'q';
   // returns the AST tree
 }
 
@@ -115,10 +144,10 @@ int main(int argc, char *argv[]){
     cout << "-------------------------------\n";
     vector<Token> filetokens = tokenizer(content);
 
-//    for (size_t i = 0; i < filetokens.size(); ++i) {
-//        const auto& token = filetokens[i];
-//        cout << "Token " << i << ", Member2: " << token.lexeme << endl;
-//    }
+    for (size_t i = 0; i < filetokens.size(); ++i) {
+        const auto& token = filetokens[i];
+        cout << "Token\t" << i << "\tToken Type : " << token.token_type << "\tToken Lexem : " << token.lexeme << endl;
+    }
 
   }
   else {
