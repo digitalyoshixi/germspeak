@@ -3,7 +3,7 @@ germ addtwo(int arg1, int arg2){
 }
 
 int my_var = 20;
-int my_speck = 20;
+int my_speck = myvar + 3 * 2;
 
-printf(addtwo(my_var));
+printf(addtwo(my_speck));
 
