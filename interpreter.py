@@ -1,7 +1,6 @@
 import sys
-from enum import Enum
+from enum import Enum, auto
 import re 
-
 
 keywords = ["int", "printf", "return", "germ"]
 
@@ -69,19 +68,31 @@ def tokenizer(filecontents : str) -> list[(Token,str)]:
 # ------------------ Parser and AST -----------------------
 # creating the AST Tree helper functions
 
+class PrecedenceType(Enum):
+    P_LOWEST = 0
+    P_EQUALS = 1
+    P_LESSGREATER = 2
+    P_SUM = 3
+    P_PRODUCT = 4
+    P_PREFIX = 5
+    P_CALL = 6
+    P_INDEX = 7
 
-def nud(token : Token):
-    pass
+PRECEDENCES : dict[Token, Precedences] = {
+        Token.Plus : PrecedenceType.P_SUM,
+        Token.Minus : PrecedenceType.P_SUM,
+        Token.Slash : PrecedenceType.P_PRODUCT,
+        Token.Star : PrecedenceType.P_PRODUCT,
+}
 
-def led(token : Token):
-    pass
-# creaitng the parser
-def parser(tokenstream : list[Token]):
-    # create total AST Tree object
+class AST(object):
+    def __init__(self, tokens):
+        self.tokens = tokens 
+        self.token = None
+        self.symbol_table = {}
+        self.define("<end>")
 
-    for token in tokenstream:
-        pass
-        # determine what operation to do from the given token
+
 
 
 # ------------------ MAIN -----------------------
