@@ -88,9 +88,24 @@ PRECEDENCES : dict[Token, Precedences] = {
 class AST(object):
     def __init__(self, tokens):
         self.tokens = tokens 
-        self.token = None
-        self.symbol_table = {}
-        self.define("<end>")
+        self.token_counter = 0
+        self.errors= []
+    def expect_error(self, tt : Token, got : Token):
+        self.errors.append(f"Expected {tt} and got {got} instead")
+    def current_precedence(self) -> PrecedenceType:
+        # get the precedence enum of the current token
+        precedence = PRECEDENCES.get(self.tokens[self.token_counter][0].type)
+        if precedence == None:
+            return PrecedenceType.P_LOWEST
+        return precedence
+
+    def peek_precedence():
+        # get the precedence enum of the peek token
+        precedence = PRECEDENCES.get(self.tokens[self.token_counter+1][0].type)
+        if precedence == None:
+            return PrecedenceType.P_LOWEST
+        return precedence
+
 
 
 
