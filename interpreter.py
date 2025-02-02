@@ -1,6 +1,7 @@
 import sys
 from enum import Enum, auto
 import re 
+from typing import Callable
 
 keywords = ["int", "printf", "return", "germ"]
 
@@ -76,7 +77,7 @@ class NodeType(Enum):
     # Expressions
     InfixExpression = "InfixExpression"
     # Literals
-    IntegerLiteral = "IntegerLiteral"
+    NumberLiteral = "NumberLiteral"
 
 class Node():
     def type(self) -> NodeType:
@@ -136,12 +137,12 @@ class InfixExpression(Expression):
                 "right_node" : self.right_node.json()
                 }
 
-class IntegerLiteral(Expression):
+class NumberLiteral(Expression):
     def __init__(self, value : int = None) -> None:
         self.value : int = value
 
     def type(self) -> NodeType:
-        return NodeType.IntegerLiteral
+        return NodeType.NumberLiteral
 
     def json(self) -> dict:
         return {
@@ -162,7 +163,7 @@ class PrecedenceType(Enum):
     P_CALL = 6
     P_INDEX = 7
 
-PRECEDENCES : dict[Token, Precedences] = {
+PRECEDENCES : dict[Token, PrecedenceType] = {
         Token.Plus : PrecedenceType.P_SUM,
         Token.Minus : PrecedenceType.P_SUM,
         Token.Slash : PrecedenceType.P_PRODUCT,
@@ -177,31 +178,40 @@ class Parser(object):
         self.peek_token = tokens[1] # next token we peek at
         self.errors= []
 
+        # parsing behaviors depending on tokens 
+        self.prefix_parse_fns : dict[Token, Callable]=  {
+            Token.NumberLiteral : self.parse_int_literal,
+            Token.LeftParen : self.parse_grouped_expression
+        }
+        self.infix_parse_fns : dict[Token, Callable]=  {
+            Token.Plus : self.parse_infix_expression,
+            Token.Minus : self.parse_infix_expression,
+            Token.Slash : self.parse_infix_expression,
+            Token.Star : self.parse_infix_expression,
+        }
+
     # token incrementing
-    def next_token(self) -> bool:
-        token_counter = token_counter + 1 
-        if token_counter < len(tokens) - 1:
-            self.current_token = self.tokens[token_counter]
-            self.peek_token = self.tokens[token_counter+1]
-            return True
-        else:
-            self.current_token = self.peek_token
-            return False
+    def next_token(self) -> None:
+        print(self.token_counter, self.tokens[self.token_counter])
+        self.token_counter = self.token_counter + 1 
+        self.current_token = self.tokens[self.token_counter]
+        self.peek_token = self.tokens[self.token_counter+1]
 
     # operator binding power precendence
     def current_precedence(self) -> PrecedenceType:
         # get the precedence enum of the current token
-        precedence = PRECEDENCES.get(self.tokens[self.token_counter][0].type)
+        precedence = PRECEDENCES.get(self.tokens[self.token_counter][0])
         if precedence == None:
             return PrecedenceType.P_LOWEST
         return precedence
 
-    def peek_precedence():
+    def peek_precedence(self):
         # get the precedence enum of the peek token
-        precedence = PRECEDENCES.get(self.tokens[self.token_counter+1][0].type)
+        precedence = PRECEDENCES.get(self.tokens[self.token_counter+1][0])
         if precedence == None:
             return PrecedenceType.P_LOWEST
         return precedence
+
 
     # errors
     def expect_error(self, tt : Token, got : Token):
@@ -211,9 +221,63 @@ class Parser(object):
     
     # main parsing loop 
     def parse_program(self) -> None:
-        pass
+        program = Program()
+        while self.token_counter < len(self.tokens) -1:
+            stmt : Statement = self.parse_statement()
+            if stmt is not None:
+                program.statements.append(stmt)
+        
+            self.next_token()
+        return program
 
+    def parse_statement(self) -> Statement:
+        # since there is only one type of statement, it is just this for now
+        return self.parse_expression_statement()
 
+    def parse_expression_statement(self) -> Statement:
+        expr = self.parse_expression(PrecedenceType.P_LOWEST)
+        #if self.peek_token[0] == Token.SemiColon:
+        #    print("is this troublesome?")
+        #    self.next_token() # this might cause some trouble, look over this later
+        stmt = ExpressionStatement(expr=expr)
+        return stmt
+    def parse_expression(self, precedence : PrecedenceType) -> Expression:
+        # getting the parsing function based off current token
+        prefix_fn = self.prefix_parse_fns.get(self.current_token[0])
+        if prefix_fn is None:
+            self.prefix_error(self.current_token[0])
+            return None
+        # run the prefix function if there is one
+        left_expr = prefix_fn()
+        # continuously check for infix operators 
+        while not (self.peek_token == Token.SemiColon) and precedence.value < self.peek_precedence().value:
+            infix_fn = self.infix_parse_fns.get(self.peek_token[0])
+            if infix_fn is None:
+                return left_expr
+            left_expr = infix_fn(left_expr)
+        return left_expr
+
+    def parse_infix_expression(self, left_node : Expression) -> Expression:
+        infix_expr = InfixExpression(left_node = left_node, operator=self.current_token[1])
+        precedence = self.current_precedence()
+        self.next_token()
+        infix_expr.right_node = self.parse_expression(precedence)
+        return infix_expr
+    def parse_grouped_expression(self) -> Expression:
+        self.next_token()
+        expr : Expression = self.parse_expression(PrecedenceType.P_LOWEST)
+        if not self.peek_token == Token.RightParen:
+            return None
+        return expr
+    
+    def parse_int_literal(self) -> Expression:
+        int_lit : NumberLiteral = NumberLiteral()
+
+        try:
+            int_lit.value = int(self.current_token[1])
+        except:
+            self.errors.append(f"Could not parse {self.current_token[1]} as {Token.NumberLiteral}")
+        return int_lit
 
 
 
@@ -232,6 +296,9 @@ def main():
         for i in tokens:
             print(i)
         f.close() 
+        parser = Parser(tokens)
+        program = parser.parse_program()
+        print(program.json())
     else:
         print("give a filename")
 
