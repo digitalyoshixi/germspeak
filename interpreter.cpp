@@ -4,6 +4,7 @@
 #include <fstream>
 using namespace std;
 
+// --------------------------------- TOKENIZER -----------------------------------
 
 enum TokenType{
   NumberLiteral,
@@ -25,6 +26,7 @@ struct Token{
   string lexeme;// the actual string value of the token
 };
 
+// make a C class for the tokenizer
 
 vector<Token> tokenizer(string filecontent){
   // returns a list of tokens
@@ -159,6 +161,7 @@ vector<Token> tokenizer(string filecontent){
 
 }
 
+// ------------------------- AST TREE ---------------------
 // Creating the parser objects
 
 class ExprAST { // Base class for all expressions
@@ -167,7 +170,7 @@ class ExprAST { // Base class for all expressions
     virtual ~ExprAST() = default;
 };
 
-class NumberExprAST {
+class NumberExprAST : public ExprAST{
   // stores the current value for the number
   double Val;
   // constructor
@@ -176,7 +179,7 @@ class NumberExprAST {
 };
 
 // AST class to capture the variable name
-class VariableExprAST {
+class VariableExprAST : public ExprAST{
   std::string Name;
   // constructor
   public:
@@ -220,10 +223,19 @@ public:
   FunctionAST(PrototypeAST* Proto, ExprAST* Body) : Proto(std::move(Proto)), Body(std::move(Body)) {}
 };
 
-// Grabs each next token and then perpetually push to 
+// ---------------------- PARSER FUNCTIONS ----------------
+
+ExprAST* ParseNumberExpr(double number) {
+  auto result = new NumberExprAST(number);
+  return result;
+}
+
+
+
 ExprAST* parser(){
   // make the root node
   ExprAST* root_node = new ExprAST();
+  
   return root_node;
   // returns the AST tree
 }
