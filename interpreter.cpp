@@ -1,9 +1,11 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include <map>
 #include <fstream>
 #include <string>
 using namespace std;
+
 
 
 enum TokenType{
@@ -192,8 +194,27 @@ class Parser{
       this->content = content;
       this->tokenizer = new Tokenizer(content);
       currtok = tokenizer->nextTok();
-      parse();
+      return parse();
     }
+  private:
+    string content;
+    Token currtok;
+    Tokenizer *tokenizer;
+    map<char, int> BinOpPrecedence{
+      {'<', 0},
+      {'+', 10},
+      {'-', 20},
+      {'*', 30},
+    };
+
+    int GetPrecedence(char lex){
+      int precedence = BinOpPrecedence[lex];
+      if (precedence <= 0){
+        return -1;
+      }
+      return precedence;
+    }
+
     Node *parse(){
       // check for functions 
       if (currtok.token_type == TokenType::Keyword){
@@ -215,15 +236,7 @@ class Parser{
     ExprNode *parsePrimary(){
       if (currtok.token_type == TokenType::NumberLiteral) return parseNumber();
       else if (currtok.token_type == TokenType::Identifier) return parseIdentifier();
-      else if (currtok.token_type == TokenType::LeftParen){
-        tokenizer->nextTok();
-        ExprNode *V = parseExpr();
-        if (V){
-          // eat ')'
-          tokenizer->nextTok();
-          return V;
-        }
-      }
+      else if (currtok.token_type == TokenType::LeftParen) return parseParen();
       return nullptr;
     }
     ExprNode *parseNumber(){
@@ -249,20 +262,30 @@ class Parser{
       return new VariableNode(identifier);
     }
     ExprNode *parseParen(){
-
+      tokenizer->nextTok();
+      ExprNode *V = parseExpr();
+      if (V){
+        // eat ')'
+        tokenizer->nextTok();
+        return V;
+      }
+      return nullptr;
     }
     // binary expression
     ExprNode *parseBinOp(int opcode, ExprNode *LHS){
-      
+      // get the current token's binopcode 
+      int binopcode = GetPrecedence(currtok.lexeme[0]);
+      if (opcode > binopcode){
+        return LHS;
+      }
+      return nullptr;
     }
     // functions
     FunctionNode *parseGerm(){
 
     }
-  private:
-    string content;
-    Token currtok;
-    Tokenizer *tokenizer;
+
+
 };
 
 int main(int argc, char *argv[]){
@@ -288,10 +311,8 @@ int main(int argc, char *argv[]){
       cout << "> ";
       string content;
       cin >> content;
-      cout << parser->parse(content);
+      cout << "parsed something! " << parser->parse(content);
     }
   }
   return 0;
 }
-
-
