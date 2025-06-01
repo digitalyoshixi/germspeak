@@ -218,7 +218,7 @@ class Parser{
     Node *parse(){
       // check for functions 
       if (currtok.token_type == TokenType::Keyword){
-        if (currtok.lexeme.compare("germ")) return parseGerm();
+        if (currtok.lexeme.compare("germ") == 0) return parseGerm();
       } 
       return parseExpr();
     }
@@ -296,8 +296,35 @@ class Parser{
       }
     }
     // functions
+    PrototypeNode *parseProto(){
+      // capture the first identifier
+      string identifier = tokenizer->nextTok().lexeme;
+      // capture '('
+      if (currtok.token_type == TokenType::LeftParen){
+        // parse callee 
+        vector<string> args;
+        tokenizer->nextTok();
+        while(currtok.token_type != TokenType::RightParen){
+          if (currtok.token_type != TokenType::Comma ){
+            args.push_back(currtok.lexeme);
+          }
+        }
+        return new PrototypeNode(identifier, args);
+      }
+      return nullptr;
+    }
     FunctionNode *parseGerm(){
-
+      PrototypeNode *proto = parseProto();
+      if (!proto){
+        return nullptr;
+      }
+      tokenizer->nextTok(); // capture '{'
+      ExprNode *body = parseExpr();
+      if (!body){
+        return nullptr;
+      }
+      tokenizer->nextTok(); // capture '}'
+      return new FunctionNode(proto, body);
     }
 
 
