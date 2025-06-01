@@ -150,9 +150,9 @@ class VariableNode : public ExprNode{
 class BinaryExprNode : public ExprNode{
   ExprNode *left;
   ExprNode *right;
-  Token op;
+  int op;
   public:
-    BinaryExprNode(ExprNode *left, ExprNode *right, Token op){
+    BinaryExprNode(ExprNode *left, ExprNode *right, int op){
       this->left = left;
       this->right = right;
       this->op = op;
@@ -210,7 +210,7 @@ class Parser{
     int GetPrecedence(char lex){
       int precedence = BinOpPrecedence[lex];
       if (precedence <= 0){
-        return -1;
+        return -1; // return the highest!
       }
       return precedence;
     }
@@ -241,12 +241,12 @@ class Parser{
     }
     ExprNode *parseNumber(){
       double currval = stod(currtok.lexeme);
-      tokenizer->nextTok();
+      currtok = tokenizer->nextTok();
       return new NumberNode(currval);
     }
     ExprNode *parseIdentifier(){
       string identifier = currtok.lexeme;
-      tokenizer->nextTok();
+      currtok = tokenizer->nextTok();
       // we check if this is a simple variable, or a callee
       if (currtok.token_type == TokenType::LeftParen){
         // parse callee 
@@ -274,11 +274,26 @@ class Parser{
     // binary expression
     ExprNode *parseBinOp(int opcode, ExprNode *LHS){
       // get the current token's binopcode 
-      int binopcode = GetPrecedence(currtok.lexeme[0]);
-      if (opcode > binopcode){
-        return LHS;
+      while (true){
+        int binopcode = GetPrecedence(currtok.lexeme[0]);
+        if (binopcode < opcode){
+          return LHS;
+        }
+        currtok = tokenizer->nextTok(); // grab the next token after the operator
+        ExprNode *RHS = parsePrimary();
+        if (!RHS){
+          return nullptr;
+        }
+        int nextopcode = GetPrecedence(currtok.lexeme[0]);
+        if (binopcode < nextopcode){
+          // add current RHS to the next parse binop 
+          RHS = parseBinOp(binopcode+1, RHS);
+          if (!RHS){
+            return nullptr;
+          }
+        }
+        LHS = new BinaryExprNode(LHS, RHS, binopcode);
       }
-      return nullptr;
     }
     // functions
     FunctionNode *parseGerm(){
