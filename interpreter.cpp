@@ -2,6 +2,7 @@
 #include <memory>
 #include <vector>
 #include <fstream>
+#include <string>
 using namespace std;
 
 
@@ -16,8 +17,11 @@ enum TokenType{
   Slash,
   LeftParen,
   RightParen,
+  CurlyLeftParen,
+  CurlyRightParen,
   Comma,
   SemiColon,
+  End,
 };
 
 struct Token{
@@ -25,231 +29,267 @@ struct Token{
   string lexeme;// the actual string value of the token
 };
 
-
-vector<Token> tokenizer(string filecontent){
-  // returns a list of tokens
-  int pos = 0;
-  vector<Token> returnvec;
-  while (pos < filecontent.size()){
-
-    char currentchar = filecontent[pos];
-    //cout << "POS: " << pos << " char : " << currentchar << endl;
-    // checking if it is a one-word char
-    if (currentchar == '='){
-      //cout << currentchar << endl;
-      TokenType currenttokentype = Equal;
-      struct Token currenttoken = {currenttokentype,"="};
-      returnvec.push_back(currenttoken);
-    }
-    else if (currentchar == '('){
-      //cout << currentchar << endl;
-      TokenType currenttokentype = LeftParen;
-      struct Token currenttoken = {currenttokentype,"("};
-      returnvec.push_back(currenttoken);
-    }
-    else if (currentchar == ')'){
-      //cout << currentchar << endl;
-      TokenType currenttokentype = RightParen;
-      struct Token currenttoken = {currenttokentype,")"};
-      returnvec.push_back(currenttoken);
-    }
-    else if (currentchar == '+'){
-      //cout << currentchar << endl;
-      TokenType currenttokentype = Plus;
-      struct Token currenttoken = {currenttokentype,"+"};
-      returnvec.push_back(currenttoken);
-    }
-    else if (currentchar == '-'){
-      //cout << currentchar << endl;
-      TokenType currenttokentype = Minus;
-      struct Token currenttoken = {currenttokentype,"-"};
-      returnvec.push_back(currenttoken);
-    }
-    else if (currentchar == '*'){
-      //cout << currentchar << endl;
-      TokenType currenttokentype = Minus;
-      struct Token currenttoken = {currenttokentype,"*"};
-      returnvec.push_back(currenttoken);
-    }
-    else if (currentchar == '/'){
-      //cout << currentchar << endl;
-      TokenType currenttokentype = Minus;
-      struct Token currenttoken = {currenttokentype,"/"};
-      returnvec.push_back(currenttoken);
-    }
-    else if (currentchar == ','){
-      //cout << currentchar << endl;
-      TokenType currenttokentype = Comma;
-      struct Token currenttoken = {currenttokentype,","};
-      returnvec.push_back(currenttoken);
-    }
-    else if (currentchar == ';'){
-      //cout << currentchar << endl;
-      TokenType currenttokentype = SemiColon;
-      struct Token currenttoken = {currenttokentype,";"};
-      returnvec.push_back(currenttoken);
-    }
-    // checking numeric literals
-    else if (48 <= (int)currentchar && (int)currentchar <= 57){
-      // check next char
-      //cout << currentchar << endl;
-      TokenType currenttokentype = NumberLiteral;
-      string numliteral = "";
-      numliteral += currentchar;
-      
-      currentchar = filecontent[++pos]; // get the next character
-      while (48 <= (int)currentchar && (int)currentchar <= 57){
-        numliteral += currentchar;
-        currentchar = filecontent[++pos]; // get the next character
-      }
-      //cout << "NUMBER IS : " << numliteral << endl;
-      struct Token currenttoken = {currenttokentype,numliteral};
-      returnvec.push_back(currenttoken);
-    }
-    // checking words. see if its in a-zA-Z
-    else if ((97 <= (int)currentchar && (int)currentchar <= 122) || (65 <= (int)currentchar && (int)currentchar <= 90)){
-      string strliteral = "";
-      strliteral += filecontent[pos];
-      while (filecontent[pos+1] != ' ' && filecontent[pos+1] != '\t' && filecontent[pos+1] != '\n' && filecontent[pos+1] != ';' && filecontent[pos+1] != ')' && filecontent[pos+1] != '(' && filecontent[pos+1] != ','){
-        strliteral += filecontent[pos+1]; // add the next character
-        pos++; // increase the iterator
-      }
-      // check if reserved keyword
-      if (strliteral.compare("int") == 0){
-        TokenType currenttokentype = Keyword;
-        struct Token currenttoken = {currenttokentype,strliteral};
-        returnvec.push_back(currenttoken);
-      }
-      else if(strliteral.compare("germ") == 0){
-        TokenType currenttokentype = Keyword;
-        struct Token currenttoken = {currenttokentype,strliteral};
-        returnvec.push_back(currenttoken);
-
-      }
-      else if(strliteral.compare("printf") == 0){
-        TokenType currenttokentype = Keyword;
-        struct Token currenttoken = {currenttokentype,strliteral};
-        returnvec.push_back(currenttoken);
-
-      }
-      else if(strliteral.compare("return")== 0){
-        TokenType currenttokentype = Keyword;
-        struct Token currenttoken = {currenttokentype,strliteral};
-        returnvec.push_back(currenttoken);
-
-      }
-      else if(strliteral.compare("char")== 0){
-        TokenType currenttokentype = Keyword;
-        struct Token currenttoken = {currenttokentype,strliteral};
-        returnvec.push_back(currenttoken);
-
-      }
-      else{
-        TokenType currenttokentype = Identifier;
-        struct Token currenttoken = {currenttokentype,strliteral};
-        returnvec.push_back(currenttoken);
-      }
-      //cout << "String Literal IS : " << strliteral << endl;
-      // construct the word from before whitespace
-    }
-    // increment the file pointer position
-    pos++;
+bool isstringdigit(string mystring){
+  for (int i = 0; i < mystring.size();i++) {
+    if (!isdigit(mystring[i])) return 0;
   }
-  return returnvec;
-
+  return 1;
 }
 
-// Creating the parser objects
 
-class ExprAST { // Base class for all expressions
-  // constructor 
+class Tokenizer{
   public:
-    virtual ~ExprAST() = default;
+    Tokenizer(string filecontent){
+      this->filecontent = filecontent;
+      filelength = filecontent.size();
+    };
+
+    void printfilecontent(){
+      cout << filecontent;
+    }
+
+    void resetcontent(string content){
+      this->filecontent = content;
+      this->index=0;
+    }
+
+    Token nextTok(){
+      if (index < filelength){
+        while (isspace(filecontent[index]) && index < filelength){
+          index++;
+        }
+        if (filecontent[index] == '=') { 
+          index++; 
+          return {TokenType::Equal, "="};
+        }
+        else if (filecontent[index] == '+') {
+          index++;
+          return {TokenType::Plus, "+"};
+        }
+        else if (filecontent[index] == '-'){
+          index++;
+          return {TokenType::Minus, "-"};
+        } 
+        else if (filecontent[index] == '*'){
+          index++;
+          return {TokenType::Star, "*"};
+        } 
+        else if (filecontent[index] == '/'){
+          index++;
+          return {TokenType::Slash, "/"};
+        }
+        else if (filecontent[index] == '('){
+          index++;
+          return {TokenType::LeftParen, "("};
+        } 
+        else if (filecontent[index] == ')'){
+          index++;
+          return {TokenType::RightParen, ")"};
+        }
+        else if (filecontent[index] == '{'){
+          index++;
+          return {TokenType::CurlyLeftParen, "{"};
+        }
+        else if (filecontent[index] == '}'){
+          index++;
+          return {TokenType::CurlyRightParen, "}"};
+        }
+        else if (filecontent[index] == ','){
+          index++;
+          return {TokenType::Comma, ","};
+        }
+        else if (filecontent[index] == ';'){
+          index++;
+          return {TokenType::SemiColon, ";"};
+        } 
+        else if (index < filelength){
+          // create a string to capture with
+          string currentstring;
+          while (index < filelength && isalnum(filecontent[index])){
+            currentstring += filecontent[index++];
+          }
+          // check capture
+          if (isstringdigit(currentstring)) return {TokenType::NumberLiteral, currentstring};
+          // check keywords
+          else if (currentstring.compare("germ") && currentstring.size() > 0) return {TokenType::Keyword, currentstring};
+          // fallback
+          else return {TokenType::Identifier, currentstring};
+        }
+        index++;
+      }
+      return {TokenType::End, ""};
+    }
+  private:
+    string filecontent;
+    int index = 0;
+    int filelength; 
 };
 
-class NumberExprAST {
-  // stores the current value for the number
-  double Val;
-  // constructor
+// -------------------- AST NODES ----------------
+class Node{};
+class ExprNode : public Node{
   public:
-    NumberExprAST(double Val) : Val(Val) {}
+    ~ExprNode() = default;
 };
-
-// AST class to capture the variable name
-class VariableExprAST {
-  std::string Name;
-  // constructor
+class NumberNode : public ExprNode{
+  double val; 
   public:
-    VariableExprAST(const std::string &Name) : Name(Name) {}
+    NumberNode(double val){
+      this->val = val;
+    }
 };
-
-/// AST class to capture binary operation
-class BinaryExprAST : public ExprAST {
-  char Op;
-  ExprAST* LHS;
-  ExprAST* RHS;
-  // constructor
+class VariableNode : public ExprNode{
+  string identifier; 
   public:
-    BinaryExprAST(char Op, ExprAST* LHS, ExprAST* RHS) : Op(Op), LHS(std::move(LHS)), RHS(std::move(RHS)) {}
+    VariableNode(string identifier){
+      this->identifier = identifier;
+    }
 };
-
-/// CallExprAST - Expression class for function calls.
-class CallExprAST : public ExprAST {
-  std::string Callee;
-  std::vector<ExprAST*> Args;
-  // constructor
+class BinaryExprNode : public ExprNode{
+  ExprNode *left;
+  ExprNode *right;
+  Token op;
   public:
-    CallExprAST(const std::string &Callee, std::vector<ExprAST*> Args) : Callee(Callee), Args(std::move(Args)) {}
+    BinaryExprNode(ExprNode *left, ExprNode *right, Token op){
+      this->left = left;
+      this->right = right;
+      this->op = op;
+    }
 };
-// PrototypeSAT - Basic AST tree object that is used for function AST
-class PrototypeAST {
-  std::string Name;
-  std::vector<std::string> Args;
-
+class CallNode: public ExprNode{
+  string functionname;
+  vector<string> args;
   public:
-    PrototypeAST(const std::string &Name, std::vector<std::string> Args) : Name(Name), Args(std::move(Args)) {}
-    const std::string &getName() const { return Name; }
+    CallNode(string functionname, vector<string> args){
+      this->functionname = functionname;
+      this->args = args;
+    }
+};
+class PrototypeNode{
+  string functionname;
+  vector<string> args;
+  public:
+    PrototypeNode(string functionname, vector<string> args){
+      this->functionname = functionname;
+      this->args = args;
+    }
+};
+class FunctionNode : public Node {
+  PrototypeNode *prototype;
+  ExprNode *body;
+  public:
+    FunctionNode(PrototypeNode* prototype, ExprNode* body){
+      this->prototype = prototype;
+      this->body = body;
+    } 
 };
 
-/// FunctionAST - This class represents a function definition itself.
-class FunctionAST {
-  PrototypeAST* Proto;
-  ExprAST* Body;
+// ----------------- PARSER -------------------
+class Parser{
+  public:
+    Parser(){}
+    Node *parse(string content){
+      this->content = content;
+      this->tokenizer = new Tokenizer(content);
+      currtok = tokenizer->nextTok();
+      parse();
+    }
+    Node *parse(){
+      // check for functions 
+      if (currtok.token_type == TokenType::Keyword){
+        if (currtok.lexeme.compare("germ")) return parseGerm();
+      } 
+      return parseExpr();
+    }
+    ExprNode *parseExpr(){
+      // parse for expressions
+      ExprNode *LHS = parsePrimary();
+      if (!LHS){
+        cout << "invalid expression\n";
+        return nullptr;
+      }
+      return parseBinOp(0, LHS);
 
-public:
-  FunctionAST(PrototypeAST* Proto, ExprAST* Body) : Proto(std::move(Proto)), Body(std::move(Body)) {}
+    }
+    // primary expressions
+    ExprNode *parsePrimary(){
+      if (currtok.token_type == TokenType::NumberLiteral) return parseNumber();
+      else if (currtok.token_type == TokenType::Identifier) return parseIdentifier();
+      else if (currtok.token_type == TokenType::LeftParen){
+        tokenizer->nextTok();
+        ExprNode *V = parseExpr();
+        if (V){
+          // eat ')'
+          tokenizer->nextTok();
+          return V;
+        }
+      }
+      return nullptr;
+    }
+    ExprNode *parseNumber(){
+      double currval = stod(currtok.lexeme);
+      tokenizer->nextTok();
+      return new NumberNode(currval);
+    }
+    ExprNode *parseIdentifier(){
+      string identifier = currtok.lexeme;
+      tokenizer->nextTok();
+      // we check if this is a simple variable, or a callee
+      if (currtok.token_type == TokenType::LeftParen){
+        // parse callee 
+        vector<string> args;
+        tokenizer->nextTok();
+        while(currtok.token_type != TokenType::RightParen){
+          if (currtok.token_type != TokenType::Comma ){
+            args.push_back(currtok.lexeme);
+          }
+        }
+        return new CallNode(identifier, args);
+      }
+      return new VariableNode(identifier);
+    }
+    ExprNode *parseParen(){
+
+    }
+    // binary expression
+    ExprNode *parseBinOp(int opcode, ExprNode *LHS){
+      
+    }
+    // functions
+    FunctionNode *parseGerm(){
+
+    }
+  private:
+    string content;
+    Token currtok;
+    Tokenizer *tokenizer;
 };
-
-// Grabs each next token and then perpetually push to 
-ExprAST* parser(){
-  // make the root node
-  ExprAST* root_node = new ExprAST();
-  return root_node;
-  // returns the AST tree
-}
 
 int main(int argc, char *argv[]){
   // Check if a filename argument is given. 
   if (argc >= 2){
     // Read the file contents
     ifstream ifs(argv[1]);
-    string content( (istreambuf_iterator<char>(ifs) ),
-                         (istreambuf_iterator<char>()    ) );
-    
-    cout << "File " << argv[1] << " read:\n-------------------------------\n";
-    cout << content;
-    cout << "-------------------------------\n";
-    vector<Token> filetokens = tokenizer(content);
+    string content( (std::istreambuf_iterator<char>(ifs) ),
+                       (std::istreambuf_iterator<char>()    ) );
 
-    for (size_t i = 0; i < filetokens.size(); ++i) {
-        const auto& token = filetokens[i];
-        cout << "Token\t" << i << "\tToken Type : " << token.token_type << "\tToken Lexem : " << token.lexeme << endl;
+    Tokenizer* tokenizer = new Tokenizer(content);
+    tokenizer->printfilecontent();
+    Token currtok;
+    while (currtok.token_type != TokenType::End){
+      currtok = tokenizer->nextTok();
+      cout << currtok.token_type << " | " << currtok.lexeme << "\n";
     }
-
   }
   else {
-    cout << "give filename";
+    cout << "Acting as a REPL\n";
+    Parser *parser = new Parser();
+    while (true){
+      cout << "> ";
+      string content;
+      cin >> content;
+      cout << parser->parse(content);
+    }
   }
-
   return 0;
 }

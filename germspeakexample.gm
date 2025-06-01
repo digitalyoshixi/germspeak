@@ -1,9 +1,8 @@
-germ addtwo(int arg1, int arg2){
+germ addtwo(arg1, arg2){
   return arg1 + arg2;
 }
 
-int my_var = 20;
-int my_speck = myvar + 3 * 2;
+myvar = 20;
+myspeck = myvar + 3 * 2;
 
-printf(addtwo(my_speck));
-
+printf(addtwo(myspeck));
