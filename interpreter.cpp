@@ -113,7 +113,7 @@ class Tokenizer{
           // check capture
           if (isstringdigit(currentstring)) return {TokenType::NumberLiteral, currentstring};
           // check keywords
-          else if (currentstring.compare("germ") && currentstring.size() > 0) return {TokenType::Keyword, currentstring};
+          else if (currentstring.compare("germ") == 0) return {TokenType::Keyword, currentstring};
           // fallback
           else return {TokenType::Identifier, currentstring};
         }
@@ -262,7 +262,7 @@ class Parser{
       return new VariableNode(identifier);
     }
     ExprNode *parseParen(){
-      tokenizer->nextTok();
+      currtok = tokenizer->nextTok();
       ExprNode *V = parseExpr();
       if (V){
         // eat ')'
@@ -311,7 +311,7 @@ int main(int argc, char *argv[]){
       cout << "> ";
       string content;
       cin >> content;
-      cout << "parsed something! " << parser->parse(content);
+      cout << "parsed something! " << parser->parse(content) << "\n";
     }
   }
   return 0;
