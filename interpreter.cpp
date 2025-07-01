@@ -128,10 +128,19 @@ class Tokenizer{
 };
 
 // -------------------- AST NODES ----------------
-class Node{};
+class Node{
+  public:
+    virtual ~Node() = default;
+    virtual void debug_print(){
+      cout << "I am a Node" << '\n';
+    }
+};
 class ExprNode : public Node{
   public:
-    ~ExprNode() = default;
+    virtual ~ExprNode() = default;
+    void debug_print() override{
+      cout << "I am a ExprNode" << '\n';
+    }
 };
 class NumberNode : public ExprNode{
   double val; 
@@ -139,12 +148,20 @@ class NumberNode : public ExprNode{
     NumberNode(double val){
       this->val = val;
     }
+    void debug_print() override{
+      cout << "I am a NumberNode" << '\n';
+      cout << "- val: " << this->val << '\n';
+    }
 };
 class VariableNode : public ExprNode{
   string identifier; 
   public:
     VariableNode(string identifier){
       this->identifier = identifier;
+    }
+    void debug_print() override{
+      cout << "I am a VariableNode" << '\n';
+      cout << "- identifier: " << this->identifier << '\n';
     }
 };
 class BinaryExprNode : public ExprNode{
@@ -157,6 +174,12 @@ class BinaryExprNode : public ExprNode{
       this->right = right;
       this->op = op;
     }
+    void debug_print() override{
+      cout << "I am a BinaryExprNode" << '\n';
+      cout << "- left: " << this->left << '\n';
+      cout << "- right: " << this->right << '\n';
+      cout << "- op: " << this->op << '\n';
+    }
 };
 class CallNode: public ExprNode{
   string functionname;
@@ -165,6 +188,10 @@ class CallNode: public ExprNode{
     CallNode(string functionname, vector<string> args){
       this->functionname = functionname;
       this->args = args;
+    }
+    void debug_print() override{
+      cout << "I am a CallNode" << '\n';
+      cout << "- functionname: " << this->functionname << '\n';
     }
 };
 class PrototypeNode{
@@ -175,6 +202,10 @@ class PrototypeNode{
       this->functionname = functionname;
       this->args = args;
     }
+    virtual void debug_print() {
+      cout << "I am a PrototypeNode" << '\n';
+      cout << "- functionname: " << this->functionname << '\n';
+    }
 };
 class FunctionNode : public Node {
   PrototypeNode *prototype;
@@ -184,6 +215,11 @@ class FunctionNode : public Node {
       this->prototype = prototype;
       this->body = body;
     } 
+    void debug_print() override{
+      cout << "I am a FunctionNode" << '\n';
+      cout << "- prototype: " << this->prototype << '\n';
+      cout << "- body: " << this->body << '\n';
+    }
 };
 
 // ----------------- PARSER -------------------
@@ -299,15 +335,17 @@ class Parser{
     PrototypeNode *parseProto(){
       // capture the first identifier
       string identifier = tokenizer->nextTok().lexeme;
+      currtok = tokenizer->nextTok();
       // capture '('
       if (currtok.token_type == TokenType::LeftParen){
         // parse callee 
         vector<string> args;
-        tokenizer->nextTok();
+        currtok = tokenizer->nextTok();
         while(currtok.token_type != TokenType::RightParen){
           if (currtok.token_type != TokenType::Comma ){
             args.push_back(currtok.lexeme);
           }
+          currtok = tokenizer->nextTok();
         }
         return new PrototypeNode(identifier, args);
       }
@@ -319,6 +357,7 @@ class Parser{
         return nullptr;
       }
       tokenizer->nextTok(); // capture '{'
+      currtok = tokenizer->nextTok(); // get this current token
       ExprNode *body = parseExpr();
       if (!body){
         return nullptr;
@@ -352,8 +391,10 @@ int main(int argc, char *argv[]){
     while (true){
       cout << "> ";
       string content;
-      cin >> content;
-      cout << "parsed something! " << parser->parse(content) << "\n";
+      getline(cin, content);
+      Node *result = parser->parse(content);
+      cout << "parsed something! " << result << "\n";
+      result->debug_print();
     }
   }
   return 0;
