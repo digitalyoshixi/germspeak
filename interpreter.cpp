@@ -1,11 +1,24 @@
+#include "llvm/ADT/APFloat.h"
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/BasicBlock.h"
+#include "llvm/IR/Constants.h"
+#include "llvm/IR/DerivedTypes.h"
+#include "llvm/IR/Function.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Verifier.h"
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <vector>
 #include <map>
 #include <fstream>
 #include <string>
-using namespace std;
 
+using namespace std;
+using namespace llvm;
 
 
 enum TokenType{
@@ -128,6 +141,17 @@ class Tokenizer{
 };
 
 // -------------------- AST NODES ----------------
+static LLVMContext *TheContext;
+static IRBuilder<> *Builder;
+static Module *TheModule;
+static std::map<std::string, Value*> NamedValues;
+
+
+Value *LogErrorV(const char* Str){
+  fprintf(stderr, "Error: %s\n", Str); 
+  return nullptr;
+}
+
 class Node{
   public:
     virtual ~Node() = default;
@@ -138,6 +162,7 @@ class Node{
 class ExprNode : public Node{
   public:
     virtual ~ExprNode() = default;
+    virtual Value *codegen() = 0;
     void debug_print() override{
       cout << "I am a ExprNode" << '\n';
     }
@@ -148,6 +173,9 @@ class NumberNode : public ExprNode{
     NumberNode(double val){
       this->val = val;
     }
+    Value *codegen() override {
+      return ConstantFP::get(*TheContext, APFloat(this->val));
+    };
     void debug_print() override{
       cout << "I am a NumberNode" << '\n';
       cout << "- val: " << this->val << '\n';
@@ -159,6 +187,13 @@ class VariableNode : public ExprNode{
     VariableNode(string identifier){
       this->identifier = identifier;
     }
+    Value *codegen() override{
+      Value *V = NamedValues[identifier];
+      if (!V){
+        return LogErrorV("No identifier value");
+      }
+      return V;
+    };
     void debug_print() override{
       cout << "I am a VariableNode" << '\n';
       cout << "- identifier: " << this->identifier << '\n';
@@ -174,6 +209,22 @@ class BinaryExprNode : public ExprNode{
       this->right = right;
       this->op = op;
     }
+    Value *codegen() override{
+      Value *L = left->codegen();
+      Value *R = right->codegen();
+      switch (op) {
+        case '+':
+          return Builder->CreateFAdd(L, R, "addtmp");
+        case '-':
+          return Builder->CreateFSub(L, R, "subtmp");
+        case '*':
+          return Builder->CreateFMul(L, R, "multmp");
+        case '<':
+          return Builder->CreateFCmpULT(L, R, "cmptmp");
+        default:
+          return LogErrorV("invalid binary operator");
+      }
+    };
     void debug_print() override{
       cout << "I am a BinaryExprNode" << '\n';
       cout << "- left: " << this->left << '\n';
@@ -183,12 +234,27 @@ class BinaryExprNode : public ExprNode{
 };
 class CallNode: public ExprNode{
   string functionname;
-  vector<string> args;
+  vector<ExprNode*> args;
   public:
-    CallNode(string functionname, vector<string> args){
+    CallNode(string functionname, vector<ExprNode*> args){
       this->functionname = functionname;
       this->args = args;
     }
+    Value *codegen() override{
+      Function *CalleeF = TheModule->getFunction(functionname);
+      if (!CalleeF)
+        return LogErrorV("Unknown function referenced");
+      // If argument mismatch error.
+      if (CalleeF->arg_size() != args.size())
+        return LogErrorV("Incorrect # arguments passed");
+      std::vector<Value *> ArgsV;
+      for (unsigned i = 0, e = args.size(); i != e; ++i) {
+        ArgsV.push_back(args[i]->codegen());
+        if (!ArgsV.back())
+          return LogErrorV("Error in codegen for an argument");
+      }
+      return Builder->CreateCall(CalleeF, ArgsV, "calltmp");
+    };
     void debug_print() override{
       cout << "I am a CallNode" << '\n';
       cout << "- functionname: " << this->functionname << '\n';
@@ -222,19 +288,55 @@ class FunctionNode : public Node {
     }
 };
 
+ExprNode *LogErrorExprNode(const char* Str){
+  fprintf(stderr, "Error: %s\n", Str); 
+  return nullptr;
+}
+
+PrototypeNode *LogErrorProtoNode(const char* Str){
+  fprintf(stderr, "Error: %s\n", Str); 
+  return nullptr;
+}
+
 // ----------------- PARSER -------------------
 class Parser{
   public:
+    Token currtok;
     Parser(){}
-    Node *parse(string content){
+    
+    void setup (string content){
       this->content = content;
       this->tokenizer = new Tokenizer(content);
       currtok = tokenizer->nextTok();
-      return parse();
     }
+    
+    ExprNode *parseExpr(){
+      // parse for expressions
+      ExprNode *LHS = parsePrimary();
+      if (!LHS){
+        cout << "invalid expression\n";
+        return nullptr;
+      }
+      return parseBinOp(0, LHS);
+    }
+    
+    FunctionNode *parseGerm(){
+      PrototypeNode *proto = parseProto();
+      if (!proto){
+        return nullptr;
+      }
+      tokenizer->nextTok(); // capture '{'
+      currtok = tokenizer->nextTok(); // get this current token
+      ExprNode *body = parseExpr();
+      if (!body){
+        return nullptr;
+      }
+      tokenizer->nextTok(); // capture '}'
+      return new FunctionNode(proto, body);
+    }
+
   private:
     string content;
-    Token currtok;
     Tokenizer *tokenizer;
     map<char, int> BinOpPrecedence{
       {'<', 0},
@@ -251,23 +353,6 @@ class Parser{
       return precedence;
     }
 
-    Node *parse(){
-      // check for functions 
-      if (currtok.token_type == TokenType::Keyword){
-        if (currtok.lexeme.compare("germ") == 0) return parseGerm();
-      } 
-      return parseExpr();
-    }
-    ExprNode *parseExpr(){
-      // parse for expressions
-      ExprNode *LHS = parsePrimary();
-      if (!LHS){
-        cout << "invalid expression\n";
-        return nullptr;
-      }
-      return parseBinOp(0, LHS);
-
-    }
     // primary expressions
     ExprNode *parsePrimary(){
       if (currtok.token_type == TokenType::NumberLiteral) return parseNumber();
@@ -286,11 +371,12 @@ class Parser{
       // we check if this is a simple variable, or a callee
       if (currtok.token_type == TokenType::LeftParen){
         // parse callee 
-        vector<string> args;
+        vector<ExprNode*> args;
         tokenizer->nextTok();
         while(currtok.token_type != TokenType::RightParen){
           if (currtok.token_type != TokenType::Comma ){
-            args.push_back(currtok.lexeme);
+            ExprNode *V = parseExpr();
+            args.push_back(V);
           }
         }
         return new CallNode(identifier, args);
@@ -351,25 +437,13 @@ class Parser{
       }
       return nullptr;
     }
-    FunctionNode *parseGerm(){
-      PrototypeNode *proto = parseProto();
-      if (!proto){
-        return nullptr;
-      }
-      tokenizer->nextTok(); // capture '{'
-      currtok = tokenizer->nextTok(); // get this current token
-      ExprNode *body = parseExpr();
-      if (!body){
-        return nullptr;
-      }
-      tokenizer->nextTok(); // capture '}'
-      return new FunctionNode(proto, body);
-    }
-
-
 };
 
+// ----------------------------- Codegen helpers --------------------------------
+
+
 int main(int argc, char *argv[]){
+
   // Check if a filename argument is given. 
   if (argc >= 2){
     // Read the file contents
@@ -392,9 +466,23 @@ int main(int argc, char *argv[]){
       cout << "> ";
       string content;
       getline(cin, content);
-      Node *result = parser->parse(content);
-      cout << "parsed something! " << result << "\n";
-      result->debug_print();
+
+      parser->setup(content);
+      Token currtok = parser->currtok;
+
+      if (currtok.token_type == TokenType::Keyword){
+        if (currtok.lexeme.compare("germ") == 0){
+          FunctionNode *result = parser->parseGerm();
+          cout << "parsed a function! " << result << "\n";
+          result->debug_print();
+        }
+      } 
+      else{
+        ExprNode *result = parser->parseExpr();
+        cout << "parsed an expression! " << result << "\n";
+        result->debug_print();
+      }
+
     }
   }
   return 0;
