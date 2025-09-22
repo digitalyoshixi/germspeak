@@ -467,6 +467,7 @@ int main(int argc, char *argv[]){
       string content;
       getline(cin, content);
 
+      // expect a single expression, not multiple
       parser->setup(content);
       Token currtok = parser->currtok;
 
